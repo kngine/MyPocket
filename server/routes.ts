@@ -4,6 +4,14 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
+import OpenAI from "openai";
+
+// Internally uses Replit AI Integrations for OpenAI access, 
+// does not require your own API key, and charges are billed to your credits.
+const openai = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+});
 
 export async function registerRoutes(
   httpServer: Server,
@@ -26,7 +34,44 @@ export async function registerRoutes(
   app.post(api.articles.create.path, async (req, res) => {
     try {
       const input = api.articles.create.input.parse(req.body);
-      const article = await storage.createArticle(input);
+      
+      // Attempt to extract content using AI
+      let content = input.content;
+      let title = input.title;
+      let description = input.description;
+
+      if (!content || content.length < 100) {
+        try {
+          const response = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [
+              {
+                role: "system",
+                content: "You are a web scraper and content extractor. Given a URL, provide a clean text version of the main article content, a title, and a brief description. Return as JSON with keys: title, description, content."
+              },
+              {
+                role: "user",
+                content: `Extract content from this URL: ${input.url}`
+              }
+            ],
+            response_format: { type: "json_object" }
+          });
+          
+          const result = JSON.parse(response.choices[0].message.content || "{}");
+          title = result.title || title;
+          description = result.description || description;
+          content = result.content || content;
+        } catch (aiError) {
+          console.error("AI Content Extraction Error:", aiError);
+        }
+      }
+
+      const article = await storage.createArticle({
+        ...input,
+        title,
+        description,
+        content
+      });
       res.status(201).json(article);
     } catch (err) {
       if (err instanceof z.ZodError) {
