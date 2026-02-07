@@ -12,10 +12,18 @@ export function apiUrl(path: string): string {
 }
 
 /**
- * True only when explicitly standalone (e.g. Netlify with no backend).
- * Set VITE_STANDALONE=true on Netlify to use localStorage; otherwise we use the API
- * (same-origin when VITE_API_URL is unset, so content extraction works locally).
+ * True when in standalone mode (localStorage).
+ * Auto-detects: if in production and no VITE_API_URL is set, assume standalone (Netlify).
+ * Can also be forced with VITE_STANDALONE=true.
  */
 export function isStandalone(): boolean {
-  return import.meta.env.VITE_STANDALONE === "true" || import.meta.env.VITE_STANDALONE === true;
+  // Explicit standalone flag
+  if (import.meta.env.VITE_STANDALONE === "true" || import.meta.env.VITE_STANDALONE === true) {
+    return true;
+  }
+  // Auto-detect: production build with no API URL = standalone (Netlify)
+  if (import.meta.env.PROD && API_BASE === "") {
+    return true;
+  }
+  return false;
 }

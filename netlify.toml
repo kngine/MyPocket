@@ -1,6 +1,6 @@
 # Netlify: standalone app. No backend required.
 # Data is saved in the browser (localStorage) on the user's device.
-# Required for standalone: set env var VITE_STANDALONE=true in Netlify.
+# The app auto-detects standalone mode (production + no VITE_API_URL).
 # Optional: set VITE_API_URL to use a server instead of localStorage.
 
 [build]

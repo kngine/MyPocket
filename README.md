@@ -66,7 +66,7 @@ Then open **http://localhost:5001** in your browser.
 
 ## Deploy to Netlify (standalone)
 
-Deploy this repo to Netlify and it works as a **standalone app**: no backend or database. All data is saved **locally in the user's browser** (localStorage) on their device or phone. Connect the repo; Netlify uses `netlify.toml` (build: `npm run build:client`, publish: `dist/public`). In Netlify **Site settings → Environment variables**, add **`VITE_STANDALONE`** = **`true`** so the app uses localStorage. Optional: set `VITE_API_URL` to use a server backend instead.
+Deploy this repo to Netlify and it works as a **standalone app**: no backend or database. All data is saved **locally in the user's browser** (localStorage) on their device or phone. Connect the repo; Netlify uses `netlify.toml` (build: `npm run build:client`, publish: `dist/public`). The app auto-detects standalone mode. Optional: set `VITE_API_URL` to use a server backend instead.
 
 ---
 
