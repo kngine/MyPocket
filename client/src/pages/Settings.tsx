@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { api } from "@shared/routes";
+import { apiUrl, isStandalone } from "@/lib/api";
+import * as local from "@/lib/localArticles";
 import { useImportArticles } from "@/hooks/use-articles";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -14,7 +16,7 @@ export default function Settings() {
   const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const handleExport = () => {
-    window.location.href = api.articles.export.path;
+    window.location.href = apiUrl(api.articles.export.path);
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -25,10 +27,19 @@ export default function Settings() {
       const text = await file.text();
       const json = JSON.parse(text);
       
-      // Basic validation
       if (!Array.isArray(json)) throw new Error("File must contain an array of articles");
-      
-      importArticles.mutate({ articles: json }, {
+      // Normalize to insert shape (exported backup may include id, createdAt)
+      const articles = json.map((a: Record<string, unknown>) => ({
+        url: a.url,
+        title: a.title,
+        description: a.description ?? null,
+        content: a.content ?? null,
+        isRead: a.isRead ?? false,
+        archived: a.archived ?? false,
+        tags: Array.isArray(a.tags) ? a.tags : [],
+      }));
+
+      importArticles.mutate({ articles }, {
         onSuccess: () => {
           setImportStatus('success');
           // Reset file input
@@ -127,7 +138,7 @@ export default function Settings() {
 
         <div className="text-center pt-8">
           <p className="text-xs text-muted-foreground">
-            Local Pocket Clone v1.0.0 • Data stored locally
+            My Pocket v1.0 • {isStandalone() ? "Data stored on this device" : "Connected to server"}
           </p>
         </div>
       </main>

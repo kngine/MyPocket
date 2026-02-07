@@ -1,12 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, buildUrl, type ArticleResponse, type CreateArticleRequest, type UpdateArticleRequest, type BulkImportRequest } from "@shared/routes";
+import { api, buildUrl, type CreateArticleRequest, type UpdateArticleRequest, type BulkImportRequest } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
+import { apiUrl, isStandalone } from "@/lib/api";
+import * as local from "@/lib/localArticles";
+
+const LIST_KEY = ["articles"] as const;
+const getKey = (id: number) => ["articles", id] as const;
 
 export function useArticles() {
   return useQuery({
-    queryKey: [api.articles.list.path],
+    queryKey: LIST_KEY,
     queryFn: async () => {
-      const res = await fetch(api.articles.list.path);
+      if (isStandalone()) return local.getArticles();
+      const res = await fetch(apiUrl(api.articles.list.path));
       if (!res.ok) throw new Error("Failed to fetch articles");
       return api.articles.list.responses[200].parse(await res.json());
     },
@@ -15,10 +21,11 @@ export function useArticles() {
 
 export function useArticle(id: number) {
   return useQuery({
-    queryKey: [api.articles.get.path, id],
+    queryKey: getKey(id),
     enabled: !!id,
     queryFn: async () => {
-      const url = buildUrl(api.articles.get.path, { id });
+      if (isStandalone()) return local.getArticle(id);
+      const url = apiUrl(buildUrl(api.articles.get.path, { id }));
       const res = await fetch(url);
       if (res.status === 404) return null;
       if (!res.ok) throw new Error("Failed to fetch article");
@@ -33,30 +40,30 @@ export function useCreateArticle() {
 
   return useMutation({
     mutationFn: async (data: CreateArticleRequest) => {
-      const res = await fetch(api.articles.create.path, {
+      if (isStandalone()) return local.createArticle(data);
+      const res = await fetch(apiUrl(api.articles.create.path), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      
       if (!res.ok) {
         if (res.status === 400) {
-          const error = api.articles.create.responses[400].parse(await res.json());
-          throw new Error(error.message);
+          const err = api.articles.create.responses[400].parse(await res.json());
+          throw new Error(err.message);
         }
         throw new Error("Failed to create article");
       }
       return api.articles.create.responses[201].parse(await res.json());
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.articles.list.path] });
+      queryClient.invalidateQueries({ queryKey: LIST_KEY });
       toast({ title: "Saved!", description: "Article added to your list." });
     },
     onError: (error) => {
-      toast({ 
-        title: "Error", 
-        description: error.message || "Failed to save article", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save article",
+        variant: "destructive",
       });
     },
   });
@@ -68,20 +75,19 @@ export function useUpdateArticle() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: { id: number } & UpdateArticleRequest) => {
-      const url = buildUrl(api.articles.update.path, { id });
+      if (isStandalone()) return local.updateArticle(id, updates);
+      const url = apiUrl(buildUrl(api.articles.update.path, { id }));
       const res = await fetch(url, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
       });
-
       if (!res.ok) throw new Error("Failed to update article");
       return api.articles.update.responses[200].parse(await res.json());
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [api.articles.list.path] });
-      queryClient.invalidateQueries({ queryKey: [api.articles.get.path, data.id] });
-      
+      queryClient.invalidateQueries({ queryKey: LIST_KEY });
+      queryClient.invalidateQueries({ queryKey: getKey(data.id) });
       if (data.archived) {
         toast({ title: "Archived", description: "Article moved to archive." });
       }
@@ -98,12 +104,13 @@ export function useDeleteArticle() {
 
   return useMutation({
     mutationFn: async (id: number) => {
-      const url = buildUrl(api.articles.delete.path, { id });
+      if (isStandalone()) return local.deleteArticle(id);
+      const url = apiUrl(buildUrl(api.articles.delete.path, { id }));
       const res = await fetch(url, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete article");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.articles.list.path] });
+      queryClient.invalidateQueries({ queryKey: LIST_KEY });
       toast({ title: "Deleted", description: "Article removed from your list." });
     },
   });
@@ -115,33 +122,33 @@ export function useImportArticles() {
 
   return useMutation({
     mutationFn: async (data: BulkImportRequest) => {
-      const res = await fetch(api.articles.import.path, {
+      if (isStandalone()) return local.importArticles(data.articles);
+      const res = await fetch(apiUrl(api.articles.import.path), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      
       if (!res.ok) {
         if (res.status === 400) {
-          const error = api.articles.import.responses[400].parse(await res.json());
-          throw new Error(error.message);
+          const err = api.articles.import.responses[400].parse(await res.json());
+          throw new Error(err.message);
         }
         throw new Error("Failed to import");
       }
       return api.articles.import.responses[200].parse(await res.json());
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [api.articles.list.path] });
-      toast({ 
-        title: "Import Successful", 
-        description: `Successfully imported ${data.count} articles.` 
+      queryClient.invalidateQueries({ queryKey: LIST_KEY });
+      toast({
+        title: "Import Successful",
+        description: `Successfully imported ${data.count} articles.`,
       });
     },
     onError: (error) => {
-      toast({ 
-        title: "Import Failed", 
-        description: error.message, 
-        variant: "destructive" 
+      toast({
+        title: "Import Failed",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
