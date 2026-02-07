@@ -10,6 +10,7 @@ export const articles = pgTable("articles", {
   description: text("description"),
   content: text("content"), // Simplified content storage
   isRead: boolean("is_read").default(false).notNull(),
+  archived: boolean("archived").default(false).notNull(),
   tags: jsonb("tags").$type<string[]>().default([]),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

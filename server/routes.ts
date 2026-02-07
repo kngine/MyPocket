@@ -1,17 +1,9 @@
-
 import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import OpenAI from "openai";
-
-// Internally uses Replit AI Integrations for OpenAI access, 
-// does not require your own API key, and charges are billed to your credits.
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+import { extractContentFromUrl } from "./extractor";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -35,34 +27,33 @@ export async function registerRoutes(
     try {
       const input = api.articles.create.input.parse(req.body);
       
-      // Attempt to extract content using AI
+      // Attempt to extract content directly from the URL
       let content = input.content;
       let title = input.title;
       let description = input.description;
 
       if (!content || content.length < 100) {
         try {
-          const response = await openai.chat.completions.create({
-            model: "gpt-4o",
-            messages: [
-              {
-                role: "system",
-                content: "You are a web scraper and content extractor. Given a URL, provide a clean text version of the main article content, a title, and a brief description. Return as JSON with keys: title, description, content."
-              },
-              {
-                role: "user",
-                content: `Extract content from this URL: ${input.url}`
-              }
-            ],
-            response_format: { type: "json_object" }
-          });
+          console.log(`Extracting content from: ${input.url}`);
+          const extracted = await extractContentFromUrl(input.url);
           
-          const result = JSON.parse(response.choices[0].message.content || "{}");
-          title = result.title || title;
-          description = result.description || description;
-          content = result.content || content;
-        } catch (aiError) {
-          console.error("AI Content Extraction Error:", aiError);
+          if (extracted) {
+            // Only override if we don't have better info from user
+            if (!title || title === input.url) {
+              title = extracted.title;
+            }
+            if (!description) {
+              description = extracted.description;
+            }
+            if (!content) {
+              content = extracted.content;
+            }
+            console.log(`Successfully extracted content (${content?.length || 0} chars)`);
+          } else {
+            console.log('Content extraction returned null');
+          }
+        } catch (extractError) {
+          console.error("Content Extraction Error:", extractError);
         }
       }
 

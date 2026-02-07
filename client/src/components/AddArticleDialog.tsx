@@ -4,12 +4,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useCreateArticle } from "@/hooks/use-articles";
 
 export function AddArticleDialog() {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [content, setContent] = useState("");
   const createArticle = useCreateArticle();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -17,12 +20,14 @@ export function AddArticleDialog() {
     if (!url || !title) return;
 
     createArticle.mutate(
-      { url, title, isRead: false },
+      { url, title, description: description || undefined, content: content || undefined, isRead: false },
       {
         onSuccess: () => {
           setOpen(false);
           setUrl("");
           setTitle("");
+          setDescription("");
+          setContent("");
         },
       }
     );
@@ -38,14 +43,14 @@ export function AddArticleDialog() {
           <Plus className="h-6 w-6 text-white" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] rounded-2xl border-none shadow-2xl">
+      <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto rounded-2xl border-none shadow-2xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-display">Save Article</DialogTitle>
           <DialogDescription>
-            Enter the URL and title of the article you want to read later.
+            Enter the URL and details. Paste content if you want to save it for offline reading.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           <div className="space-y-2">
             <Label htmlFor="url" className="text-sm font-medium">Article URL</Label>
             <Input
@@ -66,6 +71,26 @@ export function AddArticleDialog() {
               onChange={(e) => setTitle(e.target.value)}
               className="rounded-xl border-border/60 focus:ring-primary/20"
               required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="description" className="text-sm font-medium">Description (optional)</Label>
+            <Input
+              id="description"
+              placeholder="Brief summary..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="rounded-xl border-border/60 focus:ring-primary/20"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="content" className="text-sm font-medium">Content (optional)</Label>
+            <Textarea
+              id="content"
+              placeholder="Paste article content here for offline reading..."
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              className="rounded-xl border-border/60 focus:ring-primary/20 min-h-[120px]"
             />
           </div>
           <DialogFooter>

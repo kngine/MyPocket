@@ -1,17 +1,32 @@
-import { useRoute, Link } from "wouter";
-import { useArticle, useUpdateArticle } from "@/hooks/use-articles";
+import { useRoute, Link, useLocation } from "wouter";
+import { useArticle, useUpdateArticle, useDeleteArticle } from "@/hooks/use-articles";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Check, Share2, Globe, Clock } from "lucide-react";
+import { ArrowLeft, Check, Share2, Globe, Clock, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function ArticleView() {
   const [match, params] = useRoute("/article/:id");
   const id = params ? parseInt(params.id) : 0;
   const { data: article, isLoading } = useArticle(id);
   const updateArticle = useUpdateArticle();
+  const deleteArticle = useDeleteArticle();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const [editOpen, setEditOpen] = useState(false);
+  const [editContent, setEditContent] = useState("");
+
+  // Mark as read when article is opened (persisted via API)
+  useEffect(() => {
+    if (article && !article.isRead) {
+      updateArticle.mutate({ id: article.id, isRead: true });
+    }
+  }, [article?.id, article?.isRead]);
 
   if (isLoading) return <LoadingView />;
   if (!article) return <NotFoundView />;
@@ -23,6 +38,31 @@ export default function ArticleView() {
   const handleShare = () => {
     navigator.clipboard.writeText(article.url);
     toast({ title: "Copied", description: "Link copied to clipboard" });
+  };
+
+  const handleEditContent = () => {
+    setEditContent(article.content || "");
+    setEditOpen(true);
+  };
+
+  const handleSaveContent = () => {
+    updateArticle.mutate(
+      { id: article.id, content: editContent },
+      {
+        onSuccess: () => {
+          setEditOpen(false);
+          toast({ title: "Saved", description: "Article content updated." });
+        },
+      }
+    );
+  };
+
+  const handleDelete = () => {
+    if (confirm("Are you sure you want to delete this article?")) {
+      deleteArticle.mutate(article.id, {
+        onSuccess: () => setLocation("/?tab=all"),
+      });
+    }
   };
 
   return (
@@ -40,6 +80,23 @@ export default function ArticleView() {
             <Button 
               variant="ghost" 
               size="icon" 
+              onClick={handleDelete}
+              title="Delete"
+              className="hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleEditContent}
+              title="Edit Content"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
               onClick={handleShare}
               title="Copy Link"
             >
@@ -51,13 +108,13 @@ export default function ArticleView() {
               </Button>
             </a>
             <Button 
-              variant={article.isRead ? "secondary" : "default"}
+              variant={article.archived ? "secondary" : "default"}
               size="sm" 
               onClick={handleArchive}
-              className={`gap-2 ${article.isRead ? 'text-green-600 bg-green-50' : 'bg-primary text-white'}`}
+              className={`gap-2 ${article.archived ? 'text-green-600 bg-green-50' : 'bg-primary text-white'}`}
             >
               <Check className="w-4 h-4" />
-              {article.isRead ? "Archived" : "Mark as Read"}
+              {article.archived ? "Archived" : article.isRead ? "Archive" : "Mark as Read"}
             </Button>
           </div>
         </div>
@@ -89,17 +146,54 @@ export default function ArticleView() {
           ) : (
             <div className="text-center py-12 bg-muted/30 rounded-2xl border border-border/50 p-8">
               <p className="text-muted-foreground mb-4">
-                We couldn't extract the full content for this article automatically.
+                No content saved yet. Add content manually or read on the original site.
               </p>
-              <Button asChild variant="outline">
-                <a href={article.url} target="_blank" rel="noopener noreferrer">
-                  Read on Original Site <Globe className="ml-2 w-4 h-4" />
-                </a>
-              </Button>
+              <div className="flex gap-2 justify-center">
+                <Button variant="outline" onClick={handleEditContent}>
+                  <Edit className="mr-2 w-4 h-4" /> Add Content
+                </Button>
+                <Button asChild variant="outline">
+                  <a href={article.url} target="_blank" rel="noopener noreferrer">
+                    Read Original <Globe className="ml-2 w-4 h-4" />
+                  </a>
+                </Button>
+              </div>
             </div>
           )}
         </div>
       </article>
+
+      {/* Edit Content Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Article Content</DialogTitle>
+            <DialogDescription>
+              Paste or edit the article content for offline reading.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-content">Content</Label>
+              <Textarea
+                id="edit-content"
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="min-h-[300px] font-mono text-sm"
+                placeholder="Paste article content here..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveContent} disabled={updateArticle.isPending}>
+              {updateArticle.isPending ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

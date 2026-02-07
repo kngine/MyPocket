@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Check, Archive, Trash2, ExternalLink, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useUpdateArticle, useDeleteArticle } from "@/hooks/use-articles";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 interface ArticleCardProps {
   article: Article;
@@ -13,18 +13,25 @@ interface ArticleCardProps {
 export function ArticleCard({ article }: ArticleCardProps) {
   const updateArticle = useUpdateArticle();
   const deleteArticle = useDeleteArticle();
+  const [, setLocation] = useLocation();
 
   const domain = new URL(article.url).hostname.replace('www.', '');
 
   const handleArchive = (e: React.MouseEvent) => {
     e.stopPropagation();
-    updateArticle.mutate({ id: article.id, isRead: !article.isRead });
+    if (article.archived) {
+      updateArticle.mutate({ id: article.id, archived: false });
+    } else {
+      updateArticle.mutate({ id: article.id, isRead: true, archived: true });
+    }
   };
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm("Are you sure you want to delete this article?")) {
-      deleteArticle.mutate(article.id);
+      deleteArticle.mutate(article.id, {
+        onSuccess: () => setLocation("/?tab=all"),
+      });
     }
   };
 
@@ -45,7 +52,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
               </span>
             </div>
             
-            <h3 className="text-xl font-bold font-display leading-tight mb-2 group-hover:text-primary transition-colors line-clamp-2">
+            <h3 className={`text-xl font-display leading-tight mb-2 group-hover:text-primary transition-colors line-clamp-2 ${article.isRead ? 'font-normal' : 'font-bold'}`}>
               {article.title}
             </h3>
             
@@ -59,11 +66,11 @@ export function ArticleCard({ article }: ArticleCardProps) {
                <Button
                  variant="ghost"
                  size="sm"
-                 className={`h-8 w-8 p-0 rounded-full hover:bg-primary/10 hover:text-primary ${article.isRead ? 'text-green-600 bg-green-50' : ''}`}
+                 className={`h-8 w-8 p-0 rounded-full hover:bg-primary/10 hover:text-primary ${article.archived ? 'text-green-600 bg-green-50' : ''}`}
                  onClick={handleArchive}
-                 title={article.isRead ? "Unarchive" : "Archive"}
+                 title={article.archived ? "Unarchive" : "Archive"}
                >
-                 {article.isRead ? <Check className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+                 {article.archived ? <Check className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
                </Button>
                
                <Button

@@ -82,10 +82,8 @@ export function useUpdateArticle() {
       queryClient.invalidateQueries({ queryKey: [api.articles.list.path] });
       queryClient.invalidateQueries({ queryKey: [api.articles.get.path, data.id] });
       
-      if (data.isRead) {
+      if (data.archived) {
         toast({ title: "Archived", description: "Article moved to archive." });
-      } else {
-        // Only toast on archive for better UX, updates can be silent or specific
       }
     },
     onError: () => {
