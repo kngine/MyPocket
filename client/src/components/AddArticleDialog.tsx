@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useCreateArticle } from "@/hooks/use-articles";
+import { isStandalone } from "@/lib/api";
 
 export function AddArticleDialog() {
   const [open, setOpen] = useState(false);
@@ -14,6 +16,7 @@ export function AddArticleDialog() {
   const [description, setDescription] = useState("");
   const [content, setContent] = useState("");
   const createArticle = useCreateArticle();
+  const standalone = isStandalone();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,9 +50,19 @@ export function AddArticleDialog() {
         <DialogHeader>
           <DialogTitle className="text-2xl font-display">Save Article</DialogTitle>
           <DialogDescription>
-            Enter the URL and details. Paste content if you want to save it for offline reading.
+            {standalone 
+              ? "Enter the URL, title, and paste content (no automatic extraction in standalone mode)."
+              : "Enter the URL and details. The server will try to extract content automatically."}
           </DialogDescription>
         </DialogHeader>
+        {standalone && (
+          <Alert className="bg-blue-50 border-blue-200">
+            <AlertCircle className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-800 text-sm">
+              <strong>Standalone mode:</strong> Content extraction requires a server. Please paste title and content manually.
+            </AlertDescription>
+          </Alert>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           <div className="space-y-2">
             <Label htmlFor="url" className="text-sm font-medium">Article URL</Label>
@@ -84,13 +97,16 @@ export function AddArticleDialog() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="content" className="text-sm font-medium">Content (optional)</Label>
+            <Label htmlFor="content" className="text-sm font-medium">
+              Content {standalone && <span className="text-red-500">*</span>}
+            </Label>
             <Textarea
               id="content"
-              placeholder="Paste article content here for offline reading..."
+              placeholder="Paste article content here..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
               className="rounded-xl border-border/60 focus:ring-primary/20 min-h-[120px]"
+              required={standalone}
             />
           </div>
           <DialogFooter>

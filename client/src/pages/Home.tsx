@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 export default function Home() {
   const { data: articles, isLoading, error } = useArticles();
   const [location] = useLocation();
-  const [activeTab, setActiveTab] = useState("unread");
+  const [activeTab, setActiveTab] = useState("all");
 
   // Sync tab from URL when navigating after delete (/?tab=all)
   useEffect(() => {
