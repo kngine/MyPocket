@@ -6,6 +6,9 @@
   publish = "dist/public"
   functions = "netlify/functions"
 
+[build.environment]
+  NODE_VERSION = "20"
+
 # SPA: all routes serve index.html (Netlify serves /.netlify/functions/* before redirects)
 [[redirects]]
   from = "/*"
