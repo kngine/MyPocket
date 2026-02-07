@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { Plus, AlertCircle } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useCreateArticle } from "@/hooks/use-articles";
 import { isStandalone } from "@/lib/api";
+import { extractContentFromUrl } from "@/lib/extractContent";
 
 export function AddArticleDialog() {
   const [open, setOpen] = useState(false);
@@ -15,15 +15,37 @@ export function AddArticleDialog() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [content, setContent] = useState("");
+  const [extracting, setExtracting] = useState(false);
   const createArticle = useCreateArticle();
   const standalone = isStandalone();
+  const isPending = createArticle.isPending || extracting;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url || !title) return;
 
+    let finalTitle = title;
+    let finalDescription = description;
+    let finalContent = content;
+
+    if (standalone && (!content || content.length < 100)) {
+      setExtracting(true);
+      try {
+        const extracted = await extractContentFromUrl(url);
+        if (extracted) {
+          if (!finalTitle || finalTitle === url) finalTitle = extracted.title;
+          if (!finalDescription) finalDescription = extracted.description;
+          if (!finalContent) finalContent = extracted.content;
+        }
+      } catch {
+        // keep user-entered values
+      } finally {
+        setExtracting(false);
+      }
+    }
+
     createArticle.mutate(
-      { url, title, description: description || undefined, content: content || undefined, isRead: false },
+      { url, title: finalTitle, description: finalDescription || undefined, content: finalContent || undefined, isRead: false },
       {
         onSuccess: () => {
           setOpen(false);
@@ -97,25 +119,22 @@ export function AddArticleDialog() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="content" className="text-sm font-medium">
-              Content {standalone && <span className="text-red-500">*</span>}
-            </Label>
+            <Label htmlFor="content" className="text-sm font-medium">Content (optional)</Label>
             <Textarea
               id="content"
-              placeholder="Paste article content here..."
+              placeholder="Paste if extraction fails or for full control..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
               className="rounded-xl border-border/60 focus:ring-primary/20 min-h-[120px]"
-              required={standalone}
             />
           </div>
           <DialogFooter>
             <Button 
               type="submit" 
               className="w-full rounded-xl"
-              disabled={createArticle.isPending}
+              disabled={isPending}
             >
-              {createArticle.isPending ? "Saving..." : "Save to List"}
+              {extracting ? "Extracting..." : isPending ? "Saving..." : "Save to List"}
             </Button>
           </DialogFooter>
         </form>

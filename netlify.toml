@@ -1,13 +1,12 @@
-# Netlify: standalone app. No backend required.
-# Data is saved in the browser (localStorage) on the user's device.
-# The app auto-detects standalone mode (production + no VITE_API_URL).
-# Optional: set VITE_API_URL to use a server instead of localStorage.
+# Netlify: standalone app with content extraction via serverless function.
+# Data is saved in the browser (localStorage). Extract content via /.netlify/functions/extract-content.
 
 [build]
   command = "npm run build:client"
   publish = "dist/public"
+  functions = "netlify/functions"
 
-# SPA: all routes serve index.html
+# SPA: all routes serve index.html (Netlify serves /.netlify/functions/* before redirects)
 [[redirects]]
   from = "/*"
   to = "/index.html"
