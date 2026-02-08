@@ -1,11 +1,7 @@
-import { JSDOM } from "jsdom";
-import { Readability } from "@mozilla/readability";
+const { JSDOM } = require("jsdom");
+const { Readability } = require("@mozilla/readability");
 
-async function extractContentFromUrl(url: string): Promise<{
-  title: string;
-  description: string;
-  content: string;
-} | null> {
+async function extractContentFromUrl(url) {
   const response = await fetch(url, {
     headers: {
       "User-Agent": "Mozilla/5.0 (compatible; MyPocket/1.0; +https://github.com)",
@@ -18,7 +14,7 @@ async function extractContentFromUrl(url: string): Promise<{
   const dom = new JSDOM(html, { url });
   const document = dom.window.document;
 
-  const getMeta = (names: string[]): string => {
+  const getMeta = (names) => {
     for (const name of names) {
       const meta = document.querySelector(
         `meta[name="${name}"], meta[property="${name}"]`
@@ -50,12 +46,12 @@ async function extractContentFromUrl(url: string): Promise<{
   };
 }
 
-export const handler = async (event: { httpMethod: string; body: string | null }) => {
+exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
 
-  let url: string;
+  let url;
   try {
     const body = JSON.parse(event.body ?? "{}");
     url = body.url;
