@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyPocket Test</title>
+</head>
+<body>
+    <h1>MyPocket Test Page</h1>
+    <p>If you see this, the site is deployed correctly.</p>
+    <p><a href="/">Go to Main App</a></p>
+    <script>
+        console.log("Test page loaded");
+        console.log("Location:", window.location.href);
+        fetch('/assets/index-C29sIfAh.js')
+            .then(r => console.log('JS file accessible:', r.ok))
+            .catch(e => console.error('JS file error:', e));
+    </script>
+</body>
+</html>
