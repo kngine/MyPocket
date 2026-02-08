@@ -20,32 +20,29 @@ export function AddArticleDialog() {
   const standalone = isStandalone();
   const isPending = createArticle.isPending || extracting;
 
+  const handleExtract = async () => {
+    if (!url) return;
+    setExtracting(true);
+    try {
+      const extracted = await extractContentFromUrl(url);
+      if (extracted) {
+        if (!title) setTitle(extracted.title);
+        if (!description) setDescription(extracted.description);
+        if (!content) setContent(extracted.content);
+      }
+    } catch (err) {
+      console.error("Extraction error:", err);
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url || !title) return;
 
-    let finalTitle = title;
-    let finalDescription = description;
-    let finalContent = content;
-
-    if (standalone && (!content || content.length < 100)) {
-      setExtracting(true);
-      try {
-        const extracted = await extractContentFromUrl(url);
-        if (extracted) {
-          if (!finalTitle || finalTitle === url) finalTitle = extracted.title;
-          if (!finalDescription) finalDescription = extracted.description;
-          if (!finalContent) finalContent = extracted.content;
-        }
-      } catch {
-        // keep user-entered values
-      } finally {
-        setExtracting(false);
-      }
-    }
-
     createArticle.mutate(
-      { url, title: finalTitle, description: finalDescription || undefined, content: finalContent || undefined, isRead: false },
+      { url, title, description: description || undefined, content: content || undefined, isRead: false },
       {
         onSuccess: () => {
           setOpen(false);
@@ -72,8 +69,8 @@ export function AddArticleDialog() {
         <DialogHeader>
           <DialogTitle className="text-2xl font-display">Save Article</DialogTitle>
           <DialogDescription>
-            {standalone 
-              ? "Enter the URL, title, and paste content (no automatic extraction in standalone mode)."
+            {standalone
+              ? "Enter URL and click 'Auto-fill' to fetch content, or paste manually."
               : "Enter the URL and details. The server will try to extract content automatically."}
           </DialogDescription>
         </DialogHeader>
@@ -88,14 +85,27 @@ export function AddArticleDialog() {
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           <div className="space-y-2">
             <Label htmlFor="url" className="text-sm font-medium">Article URL</Label>
-            <Input
-              id="url"
-              placeholder="https://example.com/article"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              className="rounded-xl border-border/60 focus:ring-primary/20"
-              required
-            />
+            <div className="flex gap-2">
+              <Input
+                id="url"
+                placeholder="https://example.com/article"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                className="rounded-xl border-border/60 focus:ring-primary/20 flex-1"
+                required
+              />
+              {standalone && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleExtract}
+                  disabled={!url || extracting}
+                  className="whitespace-nowrap"
+                >
+                  {extracting ? "Fetching..." : "Auto-fill"}
+                </Button>
+              )}
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="title" className="text-sm font-medium">Title</Label>
